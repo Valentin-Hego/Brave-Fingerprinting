@@ -137,6 +137,9 @@ def farbling(plugins_list, session_id, domain):
     Application du farbling par défaut sur une liste de plugins, avec un numéro de session et un nom de domaine donné
     Ici, la défense consiste simplement à ajouter 2 faux plugins, et à mélanger l'ordre dans la liste des plugins.
 
+    Code source d'origine :
+    https://github.com/brave/brave-core/pull/5989/changes/2794b2b4bbc32b487a8d6e125b0e568e9094550d#diff-e77a13fc2f4e540304b374a511e2c98c1ed23dd151c856659695695738286f90
+
     Paramètres:
     - plugins_list: List
         Une liste de plugins au format suivant:
@@ -239,6 +242,7 @@ def compare_plugins_list(plugin_list_1, plugin_list_2):
     if distance == 2:
         
         count_flase_plugins = 0
+        suspicious_size = 0
         for elems in diff:
             
             # Calcul du nombre d'élements aillant un taille pouvant faire penser 
@@ -276,10 +280,12 @@ def compare_plugins_list(plugin_list_1, plugin_list_2):
                 if total_title==0 and total_description==0:
                     # Si il y a déjà un plugin qui a été détecté comme étant faux
                     if count_flase_plugins == 1: 
-                        return 2
+                        return 3
                     else:
                         count_flase_plugins += 1
 
+        if suspicious_size == 3:
+            return 2
         return 1
 
     return 0
@@ -309,7 +315,7 @@ def evaluate(max_sessions=10, debug=False):
 
     original_dataset = get_plugins_from_file()
     
-    print("\nLe phase de calcul peut prendre un certain temps, en cas de doute activer l'option debug\n-> evaluate(debug=True) ligne 401\n")
+    print("\nLe phase de calcul peut prendre un certain temps, en cas de doute activer l'option debug\n-> evaluate(debug=True) ligne 418\n")
 
     # Pour chaque session
     for i in range(max_sessions):
@@ -361,6 +367,8 @@ def evaluate(max_sessions=10, debug=False):
         found_indexes = []
 
         debug_size = len(working_dataset)
+        
+        debug_dataset = []
 
         # Parcours du jeu de données
         for j in range(len(working_dataset)):
@@ -371,7 +379,9 @@ def evaluate(max_sessions=10, debug=False):
             # Comparaion entre notre liste de référence et la liste courante
             # Si elle est très fortement similaire, on ajoute son indice dans une liste d'indices trouvés
             result = compare_plugins_list(working_list, working_dataset[j])
-            if result == 2:
+            if result == 3:
+                # Possible d'utiliser le dataset de debug pour afficher toutes les listes similaires trouvées (voir ligne 393)
+                # debug_dataset.append(working_dataset[j])
                 found_indexes.append(j)
                 total+=1
 
@@ -379,6 +389,13 @@ def evaluate(max_sessions=10, debug=False):
         # Il arrive que le programme trouve plus (ou moins) de listes similaires que le nombre inséré dans le jeu de données
         # Les explications possibles de ce phénomène sont détaillées dans le rapport
         print(f"\n\tDans cette session, un total de {total} listes de plugins similaires ont été trouvées.")
+        
+        # Possible d'utiliser le dataset de debug pour afficher toutes les listes similaires trouvées (voir ligne 383)
+        # Ici si nombre de listes trouvées >= 30
+        # if total >= 30:
+            # for elems in debug_dataset:
+                # elems.sort()
+                # print(elems)
 
         # Comptage du nombre d'indices trouvés qui font partie des indices insérés
         # L'intervale de validité se situe entre -10 et +10 car l'insertion des listes farblées au début de la fonction
